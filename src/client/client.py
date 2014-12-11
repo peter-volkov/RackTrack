@@ -17,7 +17,7 @@ class RackTrackServerClient:
     def __init__(self, rack_id):
         self.rack_id = rack_id
 
-        self.server_host = "racktables.duckdns.org"
+        self.server_host = "racktrack-server.ml"
 
         self.move_object_url = "http://{}/index.php?module=redirect&page=object&tab=rackspace&op=updateObjectAllocation".format(self.server_host)
         self.temperature_url = "http://{}/index.php?module=redirect&page=rack&tab=temperature&op=updateRackTemperature".format(self.server_host)
