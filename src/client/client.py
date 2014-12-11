@@ -24,7 +24,6 @@ class RackTrackServerClient:
 
         #rack objects are servers, network equipment and anything else, that could be installed
         #  into ther ack and needs inventarization
-
         #rack object are pairs, where key is a unit_number and value is a object id
         self.rack_objects = {0: None, 1: None}
 
