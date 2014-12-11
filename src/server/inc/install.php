@@ -86,20 +86,6 @@ echo "<input type=hidden name=step value='${next_step}'>\n";
 }
 
 // Check if the software is already installed.
-function not_already_installed()
-{
-	global $found_secret_file, $pdo_dsn;
-	if ($found_secret_file and isset ($pdo_dsn))
-	{
-		echo 'Your configuration file exists and seems to hold necessary data already.<br>';
-		return FALSE;
-	}
-	else
-	{
-		echo 'There seem to be no existing installation here, I am going to setup one now.<br>';
-		return TRUE;
-	}
-}
 
 // Check that we can write to configuration file.
 // If so, ask for DB connection paramaters and test
@@ -325,6 +311,20 @@ function check_config_access()
 	echo 'only as an example):';
 	echo '<pre>chown nobody:nogroup secret.php; chmod 400 secret.php</pre>';
 	return FALSE;
+}
+function not_already_installed()
+{
+	global $found_secret_file, $pdo_dsn;
+	if ($found_secret_file and isset ($pdo_dsn))
+	{
+		echo 'Your configuration file exists and seems to hold necessary data already.<br>';
+		return FALSE;
+	}
+	else
+	{
+		echo 'There seem to be no existing installation here, I am going to setup one now.<br>';
+		return TRUE;
+	}
 }
 
 function connect_to_db_or_die ()
