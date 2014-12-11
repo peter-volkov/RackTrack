@@ -896,107 +896,6 @@ function printObjectDetailsForRenderRack ($object_id, $hl_obj_id = 0)
 }
 
 // This function renders rack as HTML table.
-function renderRack ($rack_id, $hl_obj_id = 0)
-{
-	$rackData = spotEntity ('rack', $rack_id);
-	amplifyCell ($rackData);
-	markAllSpans ($rackData);
-	if ($hl_obj_id > 0)
-		highlightObject ($rackData, $hl_obj_id);
-	$prev_id = getPrevIDforRack ($rackData['row_id'], $rack_id);
-	$next_id = getNextIDforRack ($rackData['row_id'], $rack_id);
-	
-	echo "<center><table border=0><tr valign=middle>";
-	echo '<td><h2>' . mkA ($rackData['row_name'], 'row', $rackData['row_id']) . ' :</h2></td>';
-	if ($prev_id != NULL)
-		echo '<td>' . mkA (getImageHREF ('prev', 'previous rack'), 'rack', $prev_id) . '</td>';
-	echo '<td><h2>' . mkA ($rackData['name'], 'rack', $rackData['id']) . '</h2></td>';
-	if ($next_id != NULL)
-		echo '<td>' . mkA (getImageHREF ('next', 'next rack'), 'rack', $next_id) . '</td>';
-	echo "</h2></td></tr></table>\n";	
-	
-	$result = usePreparedSelectBlade ("SELECT * FROM racktemperature WHERE rackid = ?", array ($rack_id));
-		$row = $result->fetch (PDO::FETCH_ASSOC);		
-	if(isset ($row['top'])){   	
-	echo "<table align=left border=1>\n";
-	echo "<tr><th>Sensor</th><th>Temperature</th></tr>\n";
-	for ($i = $rackData['height']; $i > 5; $i--)
-	{
-	  if($i == 40){
-		echo "<tr><td>top</td><td>{$row['top']}</td></tr>\n";
-	  }
-	  else if($i == 23){
-		echo "<tr><td>middle</td><td>{$row['middle']}</td></tr>\n";
-	  }	  
-	  else if($i == 11){
-		echo "<tr><td>bottom</td><td>{$row['bottom']}</td></tr>\n";
-	  }
-	  else{
-	   echo "<tr><td>&nbsp</td><td>&nbsp</td></tr>\n";
-	  }
-	}
-	echo "</table>";
-	}
-	echo "<table class=rack align=center border=0 cellspacing=0 cellpadding=1>\n";
-	echo "<tr><th width='10%'>&nbsp;</th><th width='20%'>Front</th>";
-	echo "<th width='50%'>Interior</th><th width='20%'>Back</th></tr>\n";
-	for ($i = $rackData['height']; $i > 0; $i--)
-	{
-		echo "<tr><th>" . inverseRackUnit ($i, $rackData) . "</th>";
-		for ($locidx = 0; $locidx < 3; $locidx++)
-		{
-			if (isset ($rackData[$i][$locidx]['skipped']))
-				continue;
-			$state = $rackData[$i][$locidx]['state'];
-			echo "<td class='atom state_${state}";
-			if (isset ($rackData[$i][$locidx]['hl']))
-				echo $rackData[$i][$locidx]['hl'];
-			echo "'";
-			if (isset ($rackData[$i][$locidx]['colspan']))
-				echo ' colspan=' . $rackData[$i][$locidx]['colspan'];
-			if (isset ($rackData[$i][$locidx]['rowspan']))
-				echo ' rowspan=' . $rackData[$i][$locidx]['rowspan'];
-			echo ">";
-			switch ($state)
-			{
-				case 'T':
-					printObjectDetailsForRenderRack ($rackData[$i][$locidx]['object_id'], $hl_obj_id);
-					break;
-				case 'A':
-					echo '<div title="This rackspace does not exist">&nbsp;</div>';
-					break;
-				case 'F':
-					echo '<div title="Free rackspace">&nbsp;</div>';
-					break;
-				case 'U':
-					echo '<div title="Problematic rackspace, you CAN\'T mount here">&nbsp;</div>';
-					break;
-				default:
-					echo '<div title="No data">&nbsp;</div>';
-					break;
-			}
-			echo '</td>';
-		}
-		echo "</tr>\n";
-	}
-	echo "</table>\n";
-	// Get a list of all of objects Zero-U mounted to this rack
-	$zeroUObjects = getEntityRelatives('children', 'rack', $rack_id);
-	if (count ($zeroUObjects) > 0)
-	{
-		echo "<br><table width='75%' class=rack border=0 cellspacing=0 cellpadding=1>\n";
-		echo "<tr><th>Zero-U:</th></tr>\n";
-		foreach ($zeroUObjects as $zeroUObject)
-		{
-			$state = ($zeroUObject['entity_id'] == $hl_obj_id) ? 'Th' : 'T';
-			echo "<tr><td class='atom state_${state}'>";
-			printObjectDetailsForRenderRack($zeroUObject['entity_id']);
-			echo "</td></tr>\n";
-		}
-		echo "</table>\n";
-	}
-	echo "</center>\n";
-}
 
 function renderRackSortForm ($row_id)
 {
@@ -10288,6 +10187,107 @@ function renderPatchCableOIFCompatEditor()
 		)
 	);
 	echo '<br>';
+}
+function renderRack ($rack_id, $hl_obj_id = 0)
+{
+	$rackData = spotEntity ('rack', $rack_id);
+	amplifyCell ($rackData);
+	markAllSpans ($rackData);
+	if ($hl_obj_id > 0)
+		highlightObject ($rackData, $hl_obj_id);
+	$prev_id = getPrevIDforRack ($rackData['row_id'], $rack_id);
+	$next_id = getNextIDforRack ($rackData['row_id'], $rack_id);
+	
+	echo "<center><table border=0><tr valign=middle>";
+	echo '<td><h2>' . mkA ($rackData['row_name'], 'row', $rackData['row_id']) . ' :</h2></td>';
+	if ($prev_id != NULL)
+		echo '<td>' . mkA (getImageHREF ('prev', 'previous rack'), 'rack', $prev_id) . '</td>';
+	echo '<td><h2>' . mkA ($rackData['name'], 'rack', $rackData['id']) . '</h2></td>';
+	if ($next_id != NULL)
+		echo '<td>' . mkA (getImageHREF ('next', 'next rack'), 'rack', $next_id) . '</td>';
+	echo "</h2></td></tr></table>\n";	
+	
+	$result = usePreparedSelectBlade ("SELECT * FROM racktemperature WHERE rackid = ?", array ($rack_id));
+		$row = $result->fetch (PDO::FETCH_ASSOC);		
+	if(isset ($row['top'])){   	
+	echo "<table align=left border=1>\n";
+	echo "<tr><th>Sensor</th><th>Temperature</th></tr>\n";
+	for ($i = $rackData['height']; $i > 5; $i--)
+	{
+	  if($i == 40){
+		echo "<tr><td>top</td><td>{$row['top']}</td></tr>\n";
+	  }
+	  else if($i == 23){
+		echo "<tr><td>middle</td><td>{$row['middle']}</td></tr>\n";
+	  }	  
+	  else if($i == 11){
+		echo "<tr><td>bottom</td><td>{$row['bottom']}</td></tr>\n";
+	  }
+	  else{
+	   echo "<tr><td>&nbsp</td><td>&nbsp</td></tr>\n";
+	  }
+	}
+	echo "</table>";
+	}
+	echo "<table class=rack align=center border=0 cellspacing=0 cellpadding=1>\n";
+	echo "<tr><th width='10%'>&nbsp;</th><th width='20%'>Front</th>";
+	echo "<th width='50%'>Interior</th><th width='20%'>Back</th></tr>\n";
+	for ($i = $rackData['height']; $i > 0; $i--)
+	{
+		echo "<tr><th>" . inverseRackUnit ($i, $rackData) . "</th>";
+		for ($locidx = 0; $locidx < 3; $locidx++)
+		{
+			if (isset ($rackData[$i][$locidx]['skipped']))
+				continue;
+			$state = $rackData[$i][$locidx]['state'];
+			echo "<td class='atom state_${state}";
+			if (isset ($rackData[$i][$locidx]['hl']))
+				echo $rackData[$i][$locidx]['hl'];
+			echo "'";
+			if (isset ($rackData[$i][$locidx]['colspan']))
+				echo ' colspan=' . $rackData[$i][$locidx]['colspan'];
+			if (isset ($rackData[$i][$locidx]['rowspan']))
+				echo ' rowspan=' . $rackData[$i][$locidx]['rowspan'];
+			echo ">";
+			switch ($state)
+			{
+				case 'T':
+					printObjectDetailsForRenderRack ($rackData[$i][$locidx]['object_id'], $hl_obj_id);
+					break;
+				case 'A':
+					echo '<div title="This rackspace does not exist">&nbsp;</div>';
+					break;
+				case 'F':
+					echo '<div title="Free rackspace">&nbsp;</div>';
+					break;
+				case 'U':
+					echo '<div title="Problematic rackspace, you CAN\'T mount here">&nbsp;</div>';
+					break;
+				default:
+					echo '<div title="No data">&nbsp;</div>';
+					break;
+			}
+			echo '</td>';
+		}
+		echo "</tr>\n";
+	}
+	echo "</table>\n";
+	// Get a list of all of objects Zero-U mounted to this rack
+	$zeroUObjects = getEntityRelatives('children', 'rack', $rack_id);
+	if (count ($zeroUObjects) > 0)
+	{
+		echo "<br><table width='75%' class=rack border=0 cellspacing=0 cellpadding=1>\n";
+		echo "<tr><th>Zero-U:</th></tr>\n";
+		foreach ($zeroUObjects as $zeroUObject)
+		{
+			$state = ($zeroUObject['entity_id'] == $hl_obj_id) ? 'Th' : 'T';
+			echo "<tr><td class='atom state_${state}'>";
+			printObjectDetailsForRenderRack($zeroUObject['entity_id']);
+			echo "</td></tr>\n";
+		}
+		echo "</table>\n";
+	}
+	echo "</center>\n";
 }
 
 ?>

@@ -3794,4 +3794,121 @@ function setPatchCableAmount()
 	showFuncMessage (__FUNCTION__, 'OK');
 }
 $msgcode['setPatchCableAmount']['OK'] = 51;
+function updateRackTemperature()
+{	
+	//showFuncMessage (__FUNCTION__, 'OK', array ($_REQUEST['name']));
+	//$row = array ('rackid' => $_REQUEST['rack_id'], 'top' => 10, 'middle' => 20, 'bottom' => 30);	
+	//usePreparedInsertBlade ('racktemperature', $row);
+	$rack_id = $_REQUEST['rack_id'];
+	$result = usePreparedSelectBlade ("SELECT * FROM racktemperature WHERE rackid = ?", array ($rack_id));
+	$row = $result->fetch (PDO::FETCH_ASSOC);		
+	if(isset ($row['rackid'])){   
+		usePreparedUpdateBlade('racktemperature',
+		array
+		(
+			'top' => $_REQUEST['top'], 
+			'middle' => $_REQUEST['middle'], 
+			'bottom' => $_REQUEST['bottom']
+		),
+		array ('rackid' => $_REQUEST['rack_id'])
+		);
+	}else{
+		$row = array ('rackid' => $_REQUEST['rack_id'], 'top' => $_REQUEST['top'], 
+		'middle' => $_REQUEST['middle'], 'bottom' => $_REQUEST['bottom']);		
+		//$row = array ('rackid' => $_REQUEST['rack_id'], 'top' => 10, 'middle' => 20, 'bottom' => 30);	
+		usePreparedInsertBlade ('racktemperature', $row);
+	}
+}
+$msgcode['updateObjectAllocation']['OK'] = 63;
+function updateObjectAllocation ()
+{
+	global $remote_username, $sic;
+	if (!isset ($_REQUEST['got_atoms']))
+	{
+		unset($_GET['page']);
+		unset($_GET['tab']);
+		unset($_GET['op']);
+		unset($_POST['page']);
+		unset($_POST['tab']);
+		unset($_POST['op']);
+		return buildRedirectURL (NULL, NULL, $_REQUEST);
+	}	
+	$object_id = getBypassValue();
+	$rf1 = $_REQUEST['rfid'];
+	if(isset ($_REQUEST['rfid'])){
+	//	$rf1 = 1000000;//$_REQUEST['rfid'];
+		$result = usePreparedSelectBlade ("SELECT object_id FROM objecttorf WHERE rf_id = ?", array ($rf1));
+		$row = $result->fetch (PDO::FETCH_ASSOC);
+		if(isset ($row))
+			$object_id = $row['object_id'];//получить значение из базы где rf1=njvenj
+	 //showError ('Permission deniedddddddd, "' . $object_id . '" left unchanged');
+	}
+	$changecnt = 0;
+	// Get a list of all of this object's parents,
+	// then trim the list to only include parents that are racks
+	$objectParents = getEntityRelatives('parents', 'object', $object_id);
+	$parentRacks = array();
+	foreach ($objectParents as $parentData)
+		if ($parentData['entity_type'] == 'rack')
+			$parentRacks[] = $parentData['entity_id'];
+	$workingRacksData = array();
+	foreach ($_REQUEST['rackmulti'] as $cand_id)
+	{
+		if (!isset ($workingRacksData[$cand_id]))
+		{
+			$rackData = spotEntity ('rack', $cand_id);
+			amplifyCell ($rackData);
+			$workingRacksData[$cand_id] = $rackData;
+		}
+		// It's zero-U mounted to this rack on the form, but not in the DB.  Mount it.
+		if (isset($_REQUEST["zerou_${cand_id}"]) && !in_array($cand_id, $parentRacks))
+		{
+			$changecnt++;
+			commitLinkEntities ('rack', $cand_id, 'object', $object_id);
+		}
+		// It's not zero-U mounted to this rack on the form, but it is in the DB.  Unmount it.
+		if (!isset($_REQUEST["zerou_${cand_id}"]) && in_array($cand_id, $parentRacks))
+		{
+			$changecnt++;
+			commitUnlinkEntities ('rack', $cand_id, 'object', $object_id);
+		}
+	}
+
+	foreach ($workingRacksData as &$rd)
+		applyObjectMountMask ($rd, $object_id);
+
+	$oldMolecule = getMoleculeForObject ($object_id);
+	foreach ($workingRacksData as $rack_id => $rackData)
+	{
+		if (! processGridForm ($rackData, 'F', 'T', $object_id))
+			continue;
+		$changecnt++;
+		// Reload our working copy after form processing.
+		$rackData = spotEntity ('rack', $cand_id);
+		amplifyCell ($rackData);
+		applyObjectMountMask ($rackData, $object_id);
+		$workingRacksData[$rack_id] = $rackData;
+	}
+	if ($changecnt)
+	{
+		// Log a record.
+		$newMolecule = getMoleculeForObject ($object_id);
+		usePreparedInsertBlade
+		(
+			'MountOperation',
+			array
+			(
+				'object_id' => $object_id,
+				'old_molecule_id' => count ($oldMolecule) ? createMolecule ($oldMolecule) : NULL,
+				'new_molecule_id' => count ($newMolecule) ? createMolecule ($newMolecule) : NULL,
+				'user_name' => $remote_username,
+				'comment' => empty ($sic['comment']) ? NULL : $sic['comment'],
+			)
+		);
+	}
+	showFuncMessage (__FUNCTION__, 'OK', array ($changecnt));
+}
+
+$msgcode['updateObject']['OK'] = 51;
+
 ?>
