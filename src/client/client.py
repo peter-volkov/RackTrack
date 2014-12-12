@@ -24,8 +24,9 @@ class RackTrackServerClient:
 
         #rack objects are servers, network equipment and anything else, that could be installed
         #  into ther ack and needs inventarization
+
         #rack object are pairs, where key is a unit_number and value is a object id
-        self.rack_objects = {0: None, 1: None}
+        self.rack_objects = {1: '7de2d2b5f8', 2: 'e324dbc7db'}
 
         self.http_headers = {
            'Authorization': 'Basic YWRtaW46cm9vdA=='
@@ -34,16 +35,18 @@ class RackTrackServerClient:
         dallas_sensors = DS18B20()
         self.temperature_sensors = dallas_sensors.get_all_sensors()
         self.sensor_dict = {'000005cf88f3': 'top', '000005cfaaa4': 'middle', '000005cf5953': 'bottom'}
+                                                                           
+        self.object_dict = {'7de2d2b5f8': '5', 'e324dbc7db': '6', 'e2767d55bc': '7'}
 
     def _read_unit_state(self, unit_number):
-        MIFAREReader = MFRC522.MFRC522(dev='/dev/spidev0.{0}'.format(unit_number))
+        MIFAREReader = MFRC522.MFRC522(dev='/dev/spidev0.{0}'.format(unit_number - 1))
 
         # Scan for nfc chips 
         status, TagType = MIFAREReader.MFRC522_Request(MIFAREReader.PICC_REQIDL)
 
         if status == MIFAREReader.MI_OK:
             status, uid = MIFAREReader.MFRC522_Anticoll()
-            return uid    
+            return ''.join(map(lambda number: hex(number)[2:], uid))    
         
     def send_temperature_info(self):
         
@@ -55,9 +58,9 @@ class RackTrackServerClient:
 
         temperature_post_data = {
             'rack_id': self.rack_id,
-            'top': int(current_temperature['top']),
-            'middle': int(current_temperature['middle']),
-            'bottom': int(current_temperature['bottom']),
+            'top': int(round(current_temperature['top'])),
+            'middle': int(round(current_temperature['middle'])),
+            'bottom': int(round(current_temperature['bottom'])),
         }
 
         post_data = urllib.urlencode(temperature_post_data)
@@ -65,27 +68,38 @@ class RackTrackServerClient:
         print(temperature_post_data)
         return urllib2.urlopen(request).read()
 
-    def send_object_presence_info(self):
-        self._update_units_state()
+    def send_object_presence_info(self):        
         for unit_number, rack_object_id in self.rack_objects.iteritems():
-            move_object_post_data = {
-                'object_id': rack_object_id,
-                'rackmulti[]': self.rack_id,
-                'comment': '',
-                'got_atoms': 'Save',
-                'atom_{0}_{1}_0'.format(self.rack_id, unit_number): 'on',
-                'atom_{0}_{1}_1'.format(self.rack_id, unit_number): 'on',
-                'atom_{0}_{1}_2'.format(self.rack_id, unit_number): 'on',
-            }
-            post_data = urllib.urlencode(move_object_post_data)
-            request = urllib2.Request(self.move_object_url, urllib.urlencode(move_object_post_data), self.http_headers)
-            print(move_object_post_data)
-            return urllib2.urlopen(request).read()
 
-    def _update_units_state(self):
-           for unit_number in self.rack_objects:
-               object_id = self._read_unit_state(unit_number)
-               self.rack_objects[unit_number] = object_id
+            move_object_post_data = None
+            rack_object_id = self._read_unit_state(unit_number)
+
+            if rack_object_id:
+                move_object_post_data = {
+                    'object_id': self.object_dict.get(rack_object_id),
+                    'rackmulti[]': self.rack_id,
+                    'comment': '',
+                    'got_atoms': 'Save',
+                    'atom_{0}_{1}_0'.format(self.rack_id, unit_number): 'on',
+                    'atom_{0}_{1}_1'.format(self.rack_id, unit_number): 'on',
+                    'atom_{0}_{1}_2'.format(self.rack_id, unit_number): 'on',
+                }
+                self.rack_objects[unit_number] = rack_object_id
+
+            elif not rack_object_id and self.rack_objects[unit_number]:            
+                move_object_post_data = {
+                    'object_id': self.object_dict.get(self.rack_objects[unit_number]),
+                    'rackmulti[]': self.rack_id,
+                    'comment': '',
+                    'got_atoms': 'Save',
+                }
+                self.rack_objects[unit_number] = None
+
+            if move_object_post_data:
+                post_data = urllib.urlencode(move_object_post_data)
+                request = urllib2.Request(self.move_object_url, urllib.urlencode(move_object_post_data), self.http_headers)
+                print(move_object_post_data)
+                urllib2.urlopen(request).read()
               
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="RackTrack  v 0.1")
